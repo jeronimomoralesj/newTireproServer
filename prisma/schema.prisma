@@ -1,0 +1,294 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Company {
+  id                 String         @id @default(uuid())
+  name               String
+  profileImage       String         @default("https://tireproimages.s3.us-east-1.amazonaws.com/companyResources/logoFull.png")
+  userCount          Int            @default(0)
+  tireCount          Int            @default(0)
+  plan               String         @default("largeFleet")
+  tier               String         @default("basic")
+  vehicleCount       Int            @default(0)
+  subscriptionStatus String
+  subscriptionEnds   DateTime
+  billingEmail       String
+  maxUsers           Int
+  maxVehicles        Int
+  createdAt          DateTime       @default(now())
+  incomes            Income[]
+  notifications      Notification[]
+  stats              Stat[]
+  tires              Tire[]
+  users              User[]
+  vehicles           Vehicle[]
+  trips              Trip[]         // Add this relation for trips
+}
+
+model User {
+  id                String         @id @default(uuid())
+  name              String
+  email             String         @unique
+  phone             String
+  password          String
+  companyId         String
+  role              String         @default("admin")
+  plates            String[]       @default([])
+  puntos            Int            @default(0)
+  isVerified        Boolean        @default(false)
+  verificationToken String?
+  preferredLanguage String         @default("en")
+  lastLogin         DateTime?
+  lastDataEntry     DateTime?
+  currency          String         @default("usd")
+  incomes           Income[]
+  notifications     Notification[]
+  trips             Trip[]         // Add this relation for trips
+  company           Company        @relation(fields: [companyId], references: [id])
+}
+
+model Vehicle {
+  id              String         @id @default(uuid())
+  companyId       String
+  licensePlate    String
+  mileage         Int
+  loadType        String
+  loadWeight      Int
+  maxLoadCapacity Int
+  isActive        Boolean
+  tireCount       Int
+  union           String
+  owner           String
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  axles           Json
+  extras          Extra[]
+  notifications   Notification[]
+  tires           Tire[]
+  company         Company        @relation(fields: [companyId], references: [id])
+}
+
+model Tire {
+  id             String                @id @default(uuid())
+  companyId      String
+  vehicleId      String?
+  customId       String
+  brand          String
+  design         String
+  initialDepth   Float
+  dimension      String
+  axis           String
+  tireMiles      Int                   @default(0)
+  createdAt      DateTime              @default(now())
+  notifications  Notification[]
+  company        Company               @relation(fields: [companyId], references: [id])
+  vehicle        Vehicle?              @relation(fields: [vehicleId], references: [id])
+  conditions     TireConditionChange[]
+  conditionStats TireConditionStat?
+  costs          TireCost[]
+  inspections    TireInspection[]
+  positions      TirePositionChange[]
+}
+
+model TireInspection {
+  id            String   @id @default(uuid())
+  tireId        String
+  date          DateTime
+  imageUrl      String?
+  cpm           Float
+  forecastedCpm Float
+  cenDepth      Float
+  extDepth      Float
+  intDepth      Float
+  pressure      Float?
+  tire          Tire     @relation(fields: [tireId], references: [id])
+}
+
+model TireConditionChange {
+  id          String   @id @default(uuid())
+  tireId      String
+  value       String
+  date        DateTime
+  design      String?
+  cost        Float?
+  provider    String?
+  motive      String?
+  remainingMM Float?
+  tire        Tire     @relation(fields: [tireId], references: [id])
+}
+
+model TireCost {
+  id       String   @id @default(uuid())
+  tireId   String
+  value    Float
+  date     DateTime
+  supplier String
+  tire     Tire     @relation(fields: [tireId], references: [id])
+}
+
+model TirePositionChange {
+  id     String   @id @default(uuid())
+  tireId String
+  value  Int
+  date   DateTime
+  tire   Tire     @relation(fields: [tireId], references: [id])
+}
+
+model TireConditionStat {
+  id          String @id @default(uuid())
+  tireId      String @unique
+  cpm         Float
+  forecastCPM Float
+  tire        Tire   @relation(fields: [tireId], references: [id])
+}
+
+model Notification {
+  id          String    @id @default(uuid())
+  companyId   String
+  userId      String
+  type        Int
+  severity    String
+  tireId      String
+  vehicleId   String
+  title       String
+  message     String
+  isRead      Boolean   @default(false)
+  isEmailSent Boolean   @default(false)
+  actionTaken Boolean   @default(false)
+  actionDate  DateTime?
+  expiresAt   DateTime
+  createdAt   DateTime  @default(now())
+  company     Company   @relation(fields: [companyId], references: [id])
+  tire        Tire      @relation(fields: [tireId], references: [id])
+  user        User      @relation(fields: [userId], references: [id])
+  vehicle     Vehicle   @relation(fields: [vehicleId], references: [id])
+}
+
+model Stat {
+  id                   String   @id @default(uuid())
+  companyId            String
+  period               String
+  date                 DateTime
+  milesTraveled        Float
+  forecastCPM          Float
+  CPM                  Float
+  monthlyInvestment    Float
+  monthlyPurchaseCount Int
+  averageTireLife      Float
+  retreadsPercentage   Float
+  fuelEfficiency       Float
+  maintenanceCost      Float
+  totalFleetValue      Float
+  createdAt            DateTime @default(now())
+  company              Company  @relation(fields: [companyId], references: [id])
+}
+
+model Macro {
+  id                  String   @id @default(uuid())
+  tireBrand           String
+  tireModel           String
+  tireSize            String
+  averageCPM          Float
+  averageLifespan     Float
+  averageMileage      Float
+  retreadsCount       Int
+  newTiresCount       Int
+  failureRate         Float
+  topFailureReasons   String[]
+  seasonalPerformance Json
+  loadTypePerformance Json
+  fleetSizeCategory   String
+  lastUpdated         DateTime
+  sampleSize          Int
+  createdAt           DateTime @default(now())
+}
+
+model Extra {
+  id                   String   @id @default(uuid())
+  vehicleId            String
+  type                 String
+  brand                String
+  purchaseDate         DateTime
+  cost                 Float
+  notes                String?
+  tittle               String
+  date                 String
+  paymentType          String
+  installmentStructure Json
+  tripId               String?
+  receipt              String?
+  vehicle              Vehicle  @relation(fields: [vehicleId], references: [id])
+}
+
+model Article {
+  id         Int      @id @default(autoincrement())
+  title      String
+  subtitle   String
+  content    String
+  coverImage String
+  category   String
+  hashtags   String[]
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model Cupon {
+  id             String   @id @default(uuid())
+  titleKey       String
+  descriptionKey String
+  discount       String
+  category       String
+  validUntil     DateTime
+  code           String
+  color          String
+}
+
+model Income {
+  id               String   @id @default(uuid())
+  userId           String?  // Made optional temporarily
+  companyId        String?  // Made optional temporarily
+  title            String   
+  date             DateTime 
+  amount           Float?   
+  note             String?  
+  tripId           String?  // Made optional since trips are optional
+  companyPaying    String   
+  type             String   
+  paymentStructure Json     
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  
+  // Relations - made optional
+  company          Company? @relation(fields: [companyId], references: [id])
+  user             User?    @relation(fields: [userId], references: [id])
+  trip             Trip?    @relation(fields: [tripId], references: [id])
+}
+
+model Trip {
+  id               String   @id @default(uuid())
+  userId           String?  // Add this field
+  companyId        String?  // Add this field
+  title            String?
+  date             DateTime
+  company          String
+  paymentType      String?
+  amount           Float?
+  paymentStructure Json?
+  startCoords      Json?
+  endCoords        Json?
+  startLocation    String
+  endLocation      String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  // Add these relations
+  user             User?    @relation(fields: [userId], references: [id])
+  companyRelation  Company? @relation(fields: [companyId], references: [id])
+  incomes          Income[]
+}
